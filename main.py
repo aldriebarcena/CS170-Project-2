@@ -1,19 +1,17 @@
-
-# 1. first create a function that can walk down the tree of features
-# 2. once this is carefully tested, create a loop inside that considers each feature separately
-
-# 3. implement leave_one_out cross validation for each feature
+from math import dist
 
 def main():
-  print("Welcome to Aldrie Barcena's Feature Selection Algorithm")
+  print("Welcome to Aldrie Barcena's Feature Selection Algorithm\n")
   # filename = input("Type in the name of the file to test: ")
-  filename = "test.txt"
+  filename = "SanityCheck_DataSet__1.txt"
   data = read_data(filename)
 
   print("Type the number of the algorithm you want to run:")
   print("1. Forward Selection")
   print("2. Backward Elimination")
   algorithm = input()
+
+  print()
 
   if algorithm == "1":
     forward_search(data)
@@ -27,13 +25,15 @@ def forward_search(data):
 
   current_set_of_features = set()
 
+  best_overall_features = set()
+  best_overall_accuracy = 0
+
   # num of columns - 1 since the first column is the class label
   num_features = len(data[0]) - 1
 
   # loop through each feature level
   # loop excludes first column since it is the class label
   for i in range(1, num_features + 1):
-    print("On the", i, "th level of the search tree")
     feature_to_add_at_this_level = 0
     best_so_far_accuracy = 0
 
@@ -42,8 +42,10 @@ def forward_search(data):
       if k in current_set_of_features:
         continue
 
-      print("--Considering adding the", k, "th feature")
       accuracy = leave_one_out_cross_validation(data, current_set_of_features, k)
+      temp = set(current_set_of_features)
+      temp.add(k)
+      print(f"Using feature(s) {temp} accuracy is {accuracy:.2f}%")
 
       # update best accuracy and feature to add at this level if needed
       if accuracy > best_so_far_accuracy:
@@ -53,37 +55,39 @@ def forward_search(data):
     if feature_to_add_at_this_level > 0:
       current_set_of_features.add(feature_to_add_at_this_level)
 
-    print("On level", i, "I added feature", feature_to_add_at_this_level, "to current set")
+    print(f"Feature set {current_set_of_features} was best, accuracy is {best_so_far_accuracy:.2f}%\n")
+
+    # update best overall subset
+    if best_so_far_accuracy > best_overall_accuracy:
+      best_overall_accuracy = best_so_far_accuracy
+      best_overall_features = set(current_set_of_features)
+
+  print(f"Finished search!! The best feature subset is {best_overall_features}, which has an accuracy of {best_overall_accuracy:.2f}%")
+  
 
 def backward_elimination(data):
 
-  current_set_of_features = set()
-
-  # number of columns - 1 since column 0 is the class label
-  num_features = len(data[0]) - 1
-
   # start with all features
-  for i in range(1, num_features + 1):
-    current_set_of_features.add(i)
+  num_features = len(data[0]) - 1
+  current_set_of_features = set(range(1, num_features + 1))
 
-  # iterate through levels of the search tree
+  best_overall_features = set(current_set_of_features)
+  best_overall_accuracy = leave_one_out_cross_validation(data, current_set_of_features, 0)
+
   for i in range(num_features, 0, -1):
-    print("On the", i, "th level of the search tree")
 
     feature_to_remove_at_this_level = 0
     best_so_far_accuracy = 0
 
     for k in current_set_of_features:
 
-      print("--Considering removing the", k, "th feature")
-
-      # temporarily remove feature k to test accuracy without it
       temp = current_set_of_features.copy()
       temp.remove(k)
 
       accuracy = leave_one_out_cross_validation(data, temp, 0)
 
-      # update best accuracy and feature to remove
+      print(f"Using feature(s) {temp} accuracy is {accuracy:.2f}%")
+
       if accuracy > best_so_far_accuracy:
         best_so_far_accuracy = accuracy
         feature_to_remove_at_this_level = k
@@ -91,12 +95,58 @@ def backward_elimination(data):
     if feature_to_remove_at_this_level > 0:
       current_set_of_features.remove(feature_to_remove_at_this_level)
 
-    print("On level", i, "I removed feature", feature_to_remove_at_this_level, "from current set")
+    print(f"Feature set {current_set_of_features} was best, accuracy is {best_so_far_accuracy:.2f}%\n")
+
+    if best_so_far_accuracy > best_overall_accuracy:
+      best_overall_accuracy = best_so_far_accuracy
+      best_overall_features = set(current_set_of_features)
+
+  print(f"Finished search!! The best feature subset is {best_overall_features}, which has an accuracy of {best_overall_accuracy:.2f}%")
+
 
 def leave_one_out_cross_validation(data, current_set_of_features, feature_to_add):
-  # for now return a random numer between 0 and 0.99 to test the algorithm
-  import random
-  return random.uniform(0, 0.99)
+
+  num_correctly_classified = 0
+
+  features_to_check = set(current_set_of_features)
+  if feature_to_add > 0:
+    features_to_check.add(feature_to_add)
+
+  for i in range(len(data)):
+
+    object_to_classify = data[i][1:]
+    label_object_to_classify = int(data[i][0])
+    
+    nearest_neighbor_distance = float("inf")
+    nearest_neighbor_location = -1
+
+    for k in range(len(data)):
+      if k != i:
+        # create array for features to consider
+        features_1 = []
+        features_2 = []
+
+        for f in range(len(object_to_classify)):
+          if (f+1) in features_to_check:
+            features_1.append(object_to_classify[f])
+            features_2.append(data[k][f+1])
+          else:
+            features_1.append(0)
+            features_2.append(0)
+
+        # formula: sqrt(sum(object_to_classify[j] - data[k][j+1])^2)
+        distance = dist(features_1, features_2)
+
+        if distance < nearest_neighbor_distance:
+          nearest_neighbor_distance = distance
+          nearest_neighbor_location = k
+          nearest_neighbor_label = int(data[nearest_neighbor_location][0])
+    
+    if nearest_neighbor_label == label_object_to_classify:
+      num_correctly_classified += 1
+    
+  return (num_correctly_classified / len(data)) * 100
+  
 
 
 def read_data(filename):
