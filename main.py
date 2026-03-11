@@ -15,7 +15,7 @@ def main():
 
   print(f"This dataset has {len(data[0]) - 1} features (not including the class attribute), with {len(data)} instances.")
   all_features = set(range(1, len(data[0])))
-  print(f"Runinng nearest neighbors with all {len(data[0]) - 1} features, using \"leaving-one-out\" evaluation, I get an accuracy of {leave_one_out_cross_validation(data, all_features, 0):.2f}%\n")
+  print(f"Running nearest neighbors with all {len(data[0]) - 1} features, using \"leaving-one-out\" evaluation, I get an accuracy of {leave_one_out_cross_validation(data, all_features, 0, 0):.2f}%\n")
 
   print("Beginning search.\n")
   if algorithm == "1":
@@ -48,11 +48,16 @@ def forward_search(data):
         continue
       
       # calculate accuracy when adding feature k
-      accuracy = leave_one_out_cross_validation(data, current_set_of_features, k)
+      accuracy = leave_one_out_cross_validation(data, current_set_of_features, k, best_so_far_accuracy)
 
       # create temp set of features for print
       temp = set(current_set_of_features)
       temp.add(k)
+
+      if accuracy is None:
+          print(f"\tUsing feature(s) {temp} (skipped since accuracy cannot beat best so far)")
+          continue
+      
       print(f"\tUsing feature(s) {temp} accuracy is {accuracy:.2f}%")
 
       # update best accuracy and feature to add at this level if needed
@@ -81,7 +86,7 @@ def backward_elimination(data):
   current_set_of_features = set(range(1, num_features + 1))
 
   best_overall_features = set(current_set_of_features)
-  best_overall_accuracy = leave_one_out_cross_validation(data, current_set_of_features, 0)
+  best_overall_accuracy = leave_one_out_cross_validation(data, current_set_of_features, 0, 0)
 
   for i in range(num_features, 0, -1):
 
@@ -94,9 +99,13 @@ def backward_elimination(data):
       temp = current_set_of_features.copy()
       temp.remove(k)
 
-      accuracy = leave_one_out_cross_validation(data, temp, 0)
+      accuracy = leave_one_out_cross_validation(data, temp, 0, best_so_far_accuracy)
 
-      print(f"Using feature(s) {temp} accuracy is {accuracy:.2f}%")
+      if accuracy is None:
+          print(f"\tUsing feature(s) {temp} (skipped since accuracy cannot beat best so far)")
+          continue
+
+      print(f"\tUsing feature(s) {temp} accuracy is {accuracy:.2f}%")
 
       if accuracy > best_so_far_accuracy:
         best_so_far_accuracy = accuracy
@@ -105,7 +114,7 @@ def backward_elimination(data):
     if feature_to_remove_at_this_level > 0:
       current_set_of_features.remove(feature_to_remove_at_this_level)
 
-    print(f"Feature set {current_set_of_features} was best, accuracy is {best_so_far_accuracy:.2f}%\n")
+    print(f"\nFeature set {current_set_of_features} was best, accuracy is {best_so_far_accuracy:.2f}%\n")
 
     if best_so_far_accuracy > best_overall_accuracy:
       best_overall_accuracy = best_so_far_accuracy
@@ -113,14 +122,19 @@ def backward_elimination(data):
 
   print(f"Finished search!! The best feature subset is {best_overall_features}, which has an accuracy of {best_overall_accuracy:.2f}%")
 
-def leave_one_out_cross_validation(data, current_set_of_features, feature_to_add):
+def leave_one_out_cross_validation(data, current_set_of_features, feature_to_add, best_so_far_accuracy):
 
   num_correctly_classified = 0
+  num_mistakes = 0
 
   # create set of features, including feature to add if forward selection
   features_to_check = set(current_set_of_features)
   if feature_to_add > 0:
     features_to_check.add(feature_to_add)
+
+  # calculates max mistakes allowed for early abandoning based on best_so_far_accuracy
+  # ex: if best_so_far_accuracy is 80% and there are 100 instances, then max_mistakes_allowed
+  max_mistakes_allowed = len(data) * (1 - best_so_far_accuracy / 100)
 
   # for each instance in the data, test against rest of data
   for i in range(len(data)):
@@ -167,6 +181,12 @@ def leave_one_out_cross_validation(data, current_set_of_features, feature_to_add
     # check if nearest neighbor label matches label of object to classify
     if nearest_neighbor_label == label_object_to_classify:
       num_correctly_classified += 1
+    else:
+      num_mistakes += 1
+    
+    # exit early if accuracy cannot beat best_so_far_accuracy
+    if num_mistakes > max_mistakes_allowed:
+      return None
   
   # return accuracy as percentage
   return (num_correctly_classified / len(data)) * 100
