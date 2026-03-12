@@ -14,16 +14,22 @@ def main():
   algorithm = input("Enter your choice: ")
   print()
 
-  print(f"This dataset has {len(data[0]) - 1} features (not including the class attribute), with {len(data)} instances.")
-  all_features = set(range(1, len(data[0])))
-  print(f"Running nearest neighbors with all {len(data[0]) - 1} features, using \"leaving-one-out\" evaluation, I get an accuracy of {leave_one_out_cross_validation(data, all_features, 0, 0):.2f}%\n")
-
-  start_time = time.perf_counter()
-
-  print("Beginning search.\n")
   if algorithm == "1":
+    print("Beginning search.\n")
+
+    print(f"This dataset has {len(data[0]) - 1} features (not including the class attribute), with {len(data)} instances.")
+    print(f"Running nearest neighbors with 0 features, using \"leaving-one-out\" evaluation, I get an accuracy of {leave_one_out_cross_validation(data, set(), 0, 0):.2f}%\n")
+    
+    start_time = time.perf_counter()
     forward_search(data)
   elif algorithm == "2":
+    print("Beginning search.\n")
+        
+    print(f"This dataset has {len(data[0]) - 1} features (not including the class attribute), with {len(data)} instances.")
+    all_features = set(range(1, len(data[0])))
+    print(f"Running nearest neighbors with all {len(data[0]) - 1} features, using \"leaving-one-out\" evaluation, I get an accuracy of {leave_one_out_cross_validation(data, all_features, 0, 0):.2f}%\n")
+    
+    start_time = time.perf_counter()
     backward_elimination(data)
   else:
     print("Invalid input")
