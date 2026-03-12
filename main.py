@@ -1,4 +1,5 @@
 from math import dist
+import time
 
 def main():
   print("Welcome to Aldrie Barcena's Feature Selection Algorithm\n")
@@ -17,6 +18,8 @@ def main():
   all_features = set(range(1, len(data[0])))
   print(f"Running nearest neighbors with all {len(data[0]) - 1} features, using \"leaving-one-out\" evaluation, I get an accuracy of {leave_one_out_cross_validation(data, all_features, 0, 0):.2f}%\n")
 
+  start_time = time.perf_counter()
+
   print("Beginning search.\n")
   if algorithm == "1":
     forward_search(data)
@@ -25,6 +28,12 @@ def main():
   else:
     print("Invalid input")
     return
+
+  end_time = time.perf_counter()
+  runtime_seconds = end_time - start_time
+  runtime_hours = runtime_seconds / 3600
+  print(f"Time taken: {runtime_seconds:.3f} seconds")
+  print(f"Time taken: {runtime_hours:.6f} hours")
 
 def forward_search(data):
 
